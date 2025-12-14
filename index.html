@@ -1,0 +1,2145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MyLM — 2D Next-Word Learner + Cloud Chat</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --text:#e7ecff;
+      --muted:#aab5e6;
+      --grid:rgba(255,255,255,.08);
+      --axis:rgba(255,255,255,.28);
+      --good:#66e3a1;
+      --bad:#ff5a6d;
+      --warn:#ffd24a;
+      --blue:#6aa7ff;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(106,167,255,.18), transparent 60%),
+                  radial-gradient(900px 600px at 90% 30%, rgba(102,227,161,.12), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width: 1480px;
+      margin: 18px auto;
+      padding: 0 14px 20px;
+      display:grid;
+      grid-template-columns: 500px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px 10px;
+      background: rgba(0,0,0,.12);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .title{
+      font-size:14px;
+      letter-spacing:.2px;
+      margin:0;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .subtitle{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.35;
+    }
+    .bd{ padding: 12px 14px 14px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn{
+      background: rgba(106,167,255,.12);
+      border: 1px solid rgba(106,167,255,.32);
+      color: var(--text);
+      padding: 9px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:600;
+      font-size:12.5px;
+      transition: transform .05s ease, background .15s ease;
+      user-select:none;
+    }
+    .btn:hover{ background: rgba(106,167,255,.18); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{ background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); }
+    .btn.danger{ background: rgba(255,90,109,.10); border-color: rgba(255,90,109,.28); }
+    .btn.good{ background: rgba(102,227,161,.10); border-color: rgba(102,227,161,.28); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .pill{
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+
+    .field{
+      display:flex; align-items:center; gap:8px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      width:100%;
+    }
+    input[type="file"]{ color: var(--muted); font-size:12.5px; width:100%; }
+    .divider{ height:1px; background: rgba(255,255,255,.08); margin:12px 0; }
+
+    .controlsRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .slider{
+      display:flex; align-items:center; gap:10px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      min-width: 300px;
+    }
+    input[type="range"]{ width: 170px; }
+
+    .chk{
+      display:flex; gap:8px; align-items:center;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      font-size:12.5px;
+      color: var(--muted);
+    }
+
+    .narrBox{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+    }
+    .narrTitle{
+      margin:0 0 8px;
+      font-size:12.5px;
+      color: var(--muted);
+      font-weight:700;
+      letter-spacing:.15px;
+    }
+    .narrText{
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    .narrText .mono{ font-family: var(--mono); color: rgba(231,236,255,.9); }
+    .narrText .muted{ color: var(--muted); }
+
+    .noteBox{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+    }
+    .formula{
+      font-family: var(--mono);
+      font-size:12.5px;
+      line-height:1.35;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 160px 1fr;
+      gap:8px 10px;
+      font-size:12.5px;
+      line-height:1.3;
+      margin-top:10px;
+    }
+    .k{ color: var(--muted); }
+    .v{ font-family: var(--mono); }
+
+    .textBox{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+    }
+    .predBox{
+      margin-top:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(106,167,255,.25);
+      background: rgba(0,0,0,.18);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: rgba(231,236,255,.92);
+      white-space: pre-wrap;
+    }
+
+    /* Chat UI */
+    .chatWrap{
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
+    }
+    .chatHdr{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      flex-wrap:wrap;
+    }
+    .chatHdr .left{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .chatHdr label{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    select, input.chatModel{
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      background: rgba(0,0,0,.20);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      padding: 7px 8px;
+      outline:none;
+    }
+    input.chatModel{ width: 160px; }
+    .chatBody{
+      height: 260px;
+      overflow:auto;
+      padding: 10px 12px;
+    }
+    .msg{
+      margin: 8px 0;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .bubble{
+      max-width: 92%;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      white-space: pre-wrap;
+      font-size: 12.8px;
+      line-height: 1.35;
+    }
+    .msg.user .bubble{
+      border-color: rgba(106,167,255,.22);
+      background: rgba(106,167,255,.10);
+    }
+    .msg.assistant .bubble{
+      border-color: rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+    }
+    .tag{
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 5px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.15);
+      color: var(--muted);
+      flex: 0 0 auto;
+      margin-top: 2px;
+    }
+    .chatInput{
+      padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:grid;
+      grid-template-columns: 1fr auto auto;
+      gap:10px;
+      align-items:center;
+      background: rgba(0,0,0,.10);
+    }
+    textarea{
+      resize: none;
+      height: 44px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12.5px;
+      outline:none;
+    }
+    .chatHint{
+      padding: 0 12px 10px;
+      color: var(--muted);
+      font-size: 12.2px;
+      line-height: 1.35;
+    }
+
+    .canvasWrap{ padding: 12px; display:flex; flex-direction:column; gap:10px; }
+    canvas{
+      width:100%;
+      height: 720px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.20);
+      border: 1px solid rgba(255,255,255,.10);
+      touch-action: none;
+      cursor: grab;
+      display:block;
+    }
+    canvas.panning{ cursor: grabbing; }
+
+    .help{ color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+
+    .legendPanel{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+    }
+    .legendTitle{
+      margin:0 0 10px;
+      font-size:12px;
+      color: var(--muted);
+      letter-spacing:.15px;
+      font-weight:700;
+    }
+    .legendGrid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 8px 14px;
+      align-items:center;
+    }
+    .legRow{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:12.5px;
+      color: rgba(231,236,255,.88);
+      line-height:1.25;
+      white-space: nowrap;
+      min-height: 18px;
+    }
+    .legDot{
+      width: 10px; height: 10px; border-radius:50%;
+      background: rgba(255,255,255,.7);
+      display:inline-block;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.25);
+    }
+    .legDot.prev{ background: rgba(255,210,74,.95); box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(255,210,74,.45); }
+    .legDot.true{ background: rgba(102,227,161,.92); box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(102,227,161,.30); }
+    .legDot.neg{ background: rgba(255,90,109,.92); box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(255,90,109,.22); }
+    .legDot.user{ background: rgba(106,167,255,.92); box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(106,167,255,.22); }
+
+    .legSwatch{
+      width: 34px;
+      height: 0;
+      border-top: 3px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+    .legSwatch.dash{ border-top-style: dashed; }
+
+    .statusMsg{
+      font-family: var(--mono);
+      font-size:12px;
+      color: rgba(255,210,74,.95);
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,210,74,.20);
+      background: rgba(0,0,0,.20);
+    }
+
+    @media (max-width: 1100px){
+      .wrap{ grid-template-columns: 1fr; }
+      canvas{ height: 600px; }
+      .legendGrid{ grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+      .legRow{ white-space: normal; }
+      .chatBody{ height: 280px; }
+    }
+    @media (max-width: 560px){
+      .legendGrid{ grid-template-columns: 1fr; }
+      .slider{ min-width: 240px; }
+      .chatInput{ grid-template-columns: 1fr; }
+      textarea{ height: 68px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <div class="hd">
+        <h1 class="title">
+          <span>MyLM — Rudimentary Next-Word Learning (2D) + Chat</span>
+          <span class="pill" id="statusPill">Idle</span>
+        </h1>
+        <p class="subtitle">
+          Next-word toy model: each word has a 2D vector. For a context word <span style="font-family:var(--mono)">prev</span>,
+          candidates are scored by <span style="font-family:var(--mono)">score = v(prev) · v(candidate)</span>.
+          Training pushes the true next word to score higher than a random negative.
+        </p>
+      </div>
+
+      <div class="bd">
+        <div class="field">
+          <input id="fileInput" type="file" accept=".txt" />
+        </div>
+        <div class="statusMsg" id="loadStatus">Load status: —</div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn secondary" id="loadSampleBtn">Load sample text</button>
+          <button class="btn secondary" id="refitBtn" disabled>Auto-fit view</button>
+          <button class="btn secondary" id="resetViewBtn" disabled>Reset view</button>
+          <button class="btn danger" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="controlsRow">
+          <div class="row">
+            <button class="btn good" id="runBtn" disabled>RUN</button>
+            <button class="btn secondary" id="pauseBtn" disabled>Pause</button>
+            <button class="btn" id="stepBtn" disabled>Step thru (A/B)</button>
+            <button class="btn secondary" id="retraceBtn" disabled>RETRACE</button>
+            <button class="btn secondary" id="resetBtn" disabled>Reset vectors</button>
+          </div>
+
+          <div class="slider" title="RUN speed (phases/sec). One training example consumes two phases: A then B.">
+            <span style="font-family:var(--mono);color:var(--muted);">Speed</span>
+            <input id="speedRange" type="range" min="1" max="60" value="12" />
+            <span style="font-family:var(--mono);" id="speedLabel">12 phases/s</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="slider" title="Vocabulary size (top-N words). Smaller makes the picture clearer.">
+            <span style="font-family:var(--mono);color:var(--muted);">Vocab</span>
+            <input id="vocabRange" type="range" min="10" max="200" value="50" />
+            <span style="font-family:var(--mono);" id="vocabLabel">50</span>
+          </div>
+
+          <div class="slider" title="Learning rate η. Smaller is more stable.">
+            <span style="font-family:var(--mono);color:var(--muted);">η</span>
+            <input id="lrRange" type="range" min="1" max="100" value="12" />
+            <span style="font-family:var(--mono);" id="lrLabel">0.12</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <label class="chk" title="If enabled, update only when the current prediction is wrong. Otherwise always update for clarity.">
+            <input id="updateOnMistake" type="checkbox" checked />
+            Update only on mistake
+          </label>
+
+          <label class="chk" title="Show word labels (can clutter when vocab is large).">
+            <input id="showLabels" type="checkbox" checked />
+            Show labels
+          </label>
+
+          <label class="chk" title="Flash only the currently applied update vector on the graph.">
+            <input id="flashUpdate" type="checkbox" checked />
+            Flash update
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="narrBox">
+          <div class="narrTitle">Narration</div>
+          <div class="narrText" id="narrationBox">Load a .txt file, then Step thru or RUN.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="kv">
+          <div class="k">Tokens / Bigrams</div><div class="v" id="kvCorpus">—</div>
+          <div class="k">Idx / Phase</div><div class="v" id="kvIdx">—</div>
+          <div class="k">Training pair</div><div class="v" id="kvPair">—</div>
+          <div class="k">score = dot</div><div class="v" id="kvScore">—</div>
+          <div class="k">p = σ(score)</div><div class="v" id="kvProb">—</div>
+          <div class="k">Top prediction</div><div class="v" id="kvTop">—</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="noteBox">
+          <div class="formula" id="formulaBox">Model:
+score(prev, cand) = v(prev) · v(cand)
+p = σ(score)
+
+Training (negative sampling, 1 negative):
+Phase A: compute score/p for (prev → trueNext) and one random negative.
+Phase B: update vectors to increase p(true) and decrease p(neg).
+
+This is a deliberately tiny “how weights learn” toy, not a full LLM.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">
+          Type a sentence. MyLM predicts the next word from the last word you typed (using learned vectors).
+        </div>
+        <input id="userLine" class="textBox" placeholder="Type here… e.g., 'the quick brown'" />
+        <div class="predBox" id="predBox">Prediction: —</div>
+
+        <!-- Chat window -->
+        <div class="divider"></div>
+
+        <div class="chatWrap">
+          <div class="chatHdr">
+            <div class="left">
+              <span class="pill">Chat</span>
+              <label>Provider
+                <select id="chatProvider">
+                  <option value="offline">Offline (Corpus Q&A)</option>
+                  <option value="openai">OpenAI API (cloud)</option>
+                  <option value="ollama">Ollama (localhost)</option>
+                </select>
+              </label>
+              <label>Model
+                <input class="chatModel" id="chatModel" value="gpt-4.1-mini" />
+              </label>
+              <label title="If enabled, the system will attach top matching sentences from your loaded .txt as context (RAG-lite).">
+                <input id="chatUseCorpus" type="checkbox" checked />
+                Use loaded text as context
+              </label>
+            </div>
+            <div class="row">
+              <button class="btn secondary" id="chatClearBtn">Clear chat</button>
+            </div>
+          </div>
+
+          <div class="chatBody" id="chatBody"></div>
+
+          <div class="chatInput">
+            <textarea id="chatInput" placeholder="Ask a question… (Enter to send, Shift+Enter for newline)"></textarea>
+            <button class="btn good" id="chatSendBtn">Send</button>
+            <button class="btn secondary" id="chatStopBtn" disabled>Stop</button>
+          </div>
+
+          <div class="chatHint" id="chatHint">
+            Offline mode: retrieves relevant sentences from the loaded .txt (no AI model).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="hd">
+        <h2 class="title">
+          <span>2D Word-Vector Graph</span>
+          <span class="pill" id="nextPill">Next: —</span>
+        </h2>
+        <p class="subtitle">
+          Yellow = training context word <span style="font-family:var(--mono)">prev</span>.
+          Green = true next word. Red = negative sample.
+          Blue = last word in your typed input.
+          Ctrl+wheel zooms; drag pans.
+        </p>
+      </div>
+
+      <div class="canvasWrap">
+        <div class="help">
+          Controls: Ctrl+wheel zoom. Drag to pan. “Auto-fit view” recomputes bounds from current vectors.
+        </div>
+
+        <canvas id="plot"></canvas>
+
+        <div class="legendPanel">
+          <div class="legendTitle">Legend</div>
+          <div class="legendGrid">
+            <div class="legRow"><span class="legDot prev"></span><span>Training prev word</span></div>
+            <div class="legRow"><span class="legDot true"></span><span>True next word</span></div>
+            <div class="legRow"><span class="legDot neg"></span><span>Negative sample</span></div>
+
+            <div class="legRow"><span class="legDot user"></span><span>Your last typed word</span></div>
+            <div class="legRow"><span class="legSwatch" style="border-top-color: rgba(231,236,255,.70);"></span><span>Vector line (origin → word vector)</span></div>
+            <div class="legRow"><span class="legSwatch dash" style="border-top-color: rgba(143,162,255,.72);"></span><span>Hyperplane: v(prev)·x = 0</span></div>
+
+            <div class="legRow"><span class="legSwatch" style="border-top-color: rgba(255,210,74,.88);"></span><span>Projection of candidate onto v(prev)</span></div>
+            <div class="legRow"><span class="legSwatch dash" style="border-top-color: rgba(255,210,74,.35);"></span><span>Residual (candidate → projection)</span></div>
+            <div class="legRow"><span class="legSwatch" style="border-top-color: rgba(106,167,255,.92);"></span><span>Flashing: Δv update being applied</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+(() => {
+  // ---------------------------- State ----------------------------
+  const state = {
+    textRaw: '',
+    tokens: [],
+    counts: new Map(),
+    vocab: [],
+    vocabSet: new Set(),
+    wordToIdx: new Map(),
+    bigrams: [],
+    idx: 0,
+    phase: 'A',
+    running: false,
+    timer: null,
+    phasesPerSec: 12,
+
+    lr: 0.12,
+    vocabSize: 50,
+
+    vecs: [],
+    baseBounds: null,
+    bounds: null,
+
+    pending: null,
+    lastView: null,
+
+    userLast: null,
+
+    pan: { active:false, startPx:{x:0,y:0}, startBounds:null },
+
+    history: [],
+    historyMax: 3000,
+
+    t: 0,
+
+    chat: {
+      messages: [],
+      aborter: null
+    },
+
+    sentences: [],
+    sentenceVecs: [],
+    df: new Map(),
+    idf: new Map(),
+  };
+
+  // ---------------------------- DOM ----------------------------
+  const el = {
+    fileInput: document.getElementById('fileInput'),
+    loadStatus: document.getElementById('loadStatus'),
+    loadSampleBtn: document.getElementById('loadSampleBtn'),
+    refitBtn: document.getElementById('refitBtn'),
+    resetViewBtn: document.getElementById('resetViewBtn'),
+    clearBtn: document.getElementById('clearBtn'),
+
+    runBtn: document.getElementById('runBtn'),
+    pauseBtn: document.getElementById('pauseBtn'),
+    stepBtn: document.getElementById('stepBtn'),
+    retraceBtn: document.getElementById('retraceBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+
+    speedRange: document.getElementById('speedRange'),
+    speedLabel: document.getElementById('speedLabel'),
+    vocabRange: document.getElementById('vocabRange'),
+    vocabLabel: document.getElementById('vocabLabel'),
+    lrRange: document.getElementById('lrRange'),
+    lrLabel: document.getElementById('lrLabel'),
+
+    updateOnMistake: document.getElementById('updateOnMistake'),
+    showLabels: document.getElementById('showLabels'),
+    flashUpdate: document.getElementById('flashUpdate'),
+
+    statusPill: document.getElementById('statusPill'),
+    nextPill: document.getElementById('nextPill'),
+    narrationBox: document.getElementById('narrationBox'),
+    formulaBox: document.getElementById('formulaBox'),
+
+    kvCorpus: document.getElementById('kvCorpus'),
+    kvIdx: document.getElementById('kvIdx'),
+    kvPair: document.getElementById('kvPair'),
+    kvScore: document.getElementById('kvScore'),
+    kvProb: document.getElementById('kvProb'),
+    kvTop: document.getElementById('kvTop'),
+
+    userLine: document.getElementById('userLine'),
+    predBox: document.getElementById('predBox'),
+
+    canvas: document.getElementById('plot'),
+
+    // chat
+    chatProvider: document.getElementById('chatProvider'),
+    chatModel: document.getElementById('chatModel'),
+    chatUseCorpus: document.getElementById('chatUseCorpus'),
+    chatBody: document.getElementById('chatBody'),
+    chatInput: document.getElementById('chatInput'),
+    chatSendBtn: document.getElementById('chatSendBtn'),
+    chatStopBtn: document.getElementById('chatStopBtn'),
+    chatClearBtn: document.getElementById('chatClearBtn'),
+    chatHint: document.getElementById('chatHint'),
+  };
+  const ctx = el.canvas.getContext('2d');
+
+  // ---------------------------- Utils ----------------------------
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const fmt = (n)=>{
+    if (!isFinite(n)) return String(n);
+    const abs = Math.abs(n);
+    if (abs>=1000) return n.toFixed(1);
+    if (abs>=100) return n.toFixed(2);
+    if (abs>=10) return n.toFixed(3);
+    return n.toFixed(4);
+  };
+  const sigmoid = (z)=> 1/(1+Math.exp(-z));
+  function deepClone(obj){
+    if (obj === null || obj === undefined) return obj;
+    if (typeof structuredClone === 'function') return structuredClone(obj);
+    return JSON.parse(JSON.stringify(obj));
+  }
+  function setStatus(s){ el.statusPill.textContent = s; }
+  function setLoadStatus(s){ el.loadStatus.textContent = 'Load status: ' + s; }
+
+  // deterministic PRNG
+  function mulberry32(seed){
+    let t = seed >>> 0;
+    return function(){
+      t += 0x6D2B79F5;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------------------------- Tokenization / Corpus ----------------------------
+  function tokenize(text){
+    const m = text.toLowerCase().match(/[a-z0-9']+/g);
+    return m ? m : [];
+  }
+
+  function buildVocab(tokens, vocabSize){
+    const counts = new Map();
+    for (const w of tokens) counts.set(w, (counts.get(w)||0)+1);
+    const sorted = [...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    const vocab = sorted.slice(0, vocabSize).map(([w])=>w);
+    const vocabSet = new Set(vocab);
+    const wordToIdx = new Map();
+    vocab.forEach((w,i)=>wordToIdx.set(w,i));
+    return {counts, vocab, vocabSet, wordToIdx};
+  }
+
+  function buildBigrams(tokens, vocabSet){
+    const bigrams = [];
+    for (let i=0;i<tokens.length-1;i++){
+      const a = tokens[i], b = tokens[i+1];
+      if (!vocabSet.has(a) || !vocabSet.has(b)) continue;
+      bigrams.push({prev:a, next:b});
+    }
+    return bigrams;
+  }
+
+  // ---------------------------- Offline retrieval (Corpus Q&A) ----------------------------
+  function splitIntoSentences(text){
+    const cleaned = (text || '').replace(/\s+/g,' ').trim();
+    if (!cleaned) return [];
+    const parts = cleaned.split(/(?<=[.!?])\s+/);
+    return parts.map(s => s.trim()).filter(s => s.length >= 20);
+  }
+
+  function tfMapFromTokens(toks){
+    const m = new Map();
+    for (const t of toks) m.set(t, (m.get(t)||0) + 1);
+    const denom = Math.max(1, toks.length);
+    for (const [k,v] of m.entries()) m.set(k, v/denom);
+    return m;
+  }
+
+  function buildTfidfIndex(sentences){
+    const N = sentences.length;
+    const df = new Map();
+    const sentTF = [];
+    for (const s of sentences){
+      const toks = tokenize(s);
+      const tf = tfMapFromTokens(toks);
+      sentTF.push(tf);
+      const uniq = new Set(toks);
+      for (const w of uniq) df.set(w, (df.get(w)||0)+1);
+    }
+    const idf = new Map();
+    for (const [w,c] of df.entries()){
+      idf.set(w, Math.log((N + 1) / (c + 1)) + 1);
+    }
+    return {sentTF, df, idf};
+  }
+
+  function dotSparse(a,b){
+    let s = 0;
+    const A = a.size <= b.size ? a : b;
+    const B = a.size <= b.size ? b : a;
+    for (const [k,v] of A.entries()){
+      const w = B.get(k);
+      if (w !== undefined) s += v*w;
+    }
+    return s;
+  }
+
+  function normSparse(a){
+    let s=0;
+    for (const v of a.values()) s += v*v;
+    return Math.sqrt(s);
+  }
+
+  function tfidfVec(tf, idf){
+    const v = new Map();
+    for (const [t, val] of tf.entries()){
+      const w = idf.get(t);
+      if (w !== undefined) v.set(t, val * w);
+    }
+    return v;
+  }
+
+  function buildQueryVec(query){
+    const toks = tokenize(query);
+    const tf = tfMapFromTokens(toks);
+    return tfidfVec(tf, state.idf);
+  }
+
+  function retrieveTopSentences(query, k=5){
+    if (!state.sentences.length) return [];
+    const q = buildQueryVec(query);
+    const qn = normSparse(q) || 1e-9;
+    const scored = [];
+    for (let i=0;i<state.sentences.length;i++){
+      const sVec = tfidfVec(state.sentenceVecs[i], state.idf);
+      const sn = normSparse(sVec) || 1e-9;
+      const sim = dotSparse(q, sVec) / (qn * sn);
+      if (sim > 0) scored.push({i, sim});
+    }
+    scored.sort((a,b)=>b.sim-a.sim);
+    return scored.slice(0,k).map(o => ({sentence: state.sentences[o.i], score:o.sim}));
+  }
+
+  function offlineAnswer(query){
+    const hits = el.chatUseCorpus.checked ? retrieveTopSentences(query, 6) : [];
+    if (!hits.length){
+      return `Offline mode (no AI model): I can only quote relevant sentences from the loaded text.\n\n` +
+             `Load a .txt file and ask questions that can be answered from it.\n` +
+             `For true “ChatGPT-like” answers, select “OpenAI API (cloud)”.`;
+    }
+    const top = hits.slice(0,3).map((h,idx)=>`${idx+1}) ${h.sentence}`).join('\n');
+    const also = hits.slice(3,6).map((h,idx)=>`${idx+4}) ${h.sentence}`).join('\n');
+
+    return `Based on the loaded text, the most relevant sentences are:\n${top}\n\n` +
+           (also ? `Additional relevant sentences:\n${also}\n\n` : '') +
+           `To synthesize beyond quoting, use “OpenAI API (cloud)”.`;
+  }
+
+  // ---------------------------- 2D Vectors ----------------------------
+  function initVecs(vocab, seed=12345){
+    const rnd = mulberry32(seed);
+    return vocab.map(() => ({
+      x: (rnd()*2 - 1) * 0.7,
+      y: (rnd()*2 - 1) * 0.7
+    }));
+  }
+
+  function computeBoundsFromVecs(vecs){
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for (const v of vecs){
+      minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+      minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+    }
+    if (!isFinite(minX)) return {minX:-1, maxX:1, minY:-1, maxY:1};
+    const padX = (maxX-minX)||1;
+    const padY = (maxY-minY)||1;
+    return {
+      minX: minX - 0.18*padX,
+      maxX: maxX + 0.18*padX,
+      minY: minY - 0.18*padY,
+      maxY: maxY + 0.18*padY
+    };
+  }
+
+  function setBounds(b){
+    state.bounds = {minX:b.minX, maxX:b.maxX, minY:b.minY, maxY:b.maxY};
+  }
+
+  // ---------------------------- Canvas math ----------------------------
+  function resizeCanvasToDisplaySize(canvas){
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(300, Math.floor(rect.width * dpr));
+    const h = Math.max(300, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+      return true;
+    }
+    return false;
+  }
+  function getPlotBox(){
+    const W = el.canvas.width, H = el.canvas.height;
+    const pad = 58;
+    return {left: pad, top: 24, right: W - 22, bottom: H - pad};
+  }
+  function worldToScreen(x,y){
+    const b = state.bounds;
+    const box = getPlotBox();
+    const sx = box.left + (x - b.minX)/(b.maxX-b.minX) * (box.right-box.left);
+    const sy = box.bottom - (y - b.minY)/(b.maxY-b.minY) * (box.bottom-box.top);
+    return {x:sx,y:sy};
+  }
+  function screenToWorld(px,py){
+    const b = state.bounds;
+    const box = getPlotBox();
+    const x = b.minX + (px - box.left)/(box.right-box.left) * (b.maxX-b.minX);
+    const y = b.minY + (box.bottom - py)/(box.bottom-box.top) * (b.maxY-b.minY);
+    return {x,y};
+  }
+  function canvasPos(evt){
+    const rect = el.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    return {x:(evt.clientX-rect.left)*dpr, y:(evt.clientY-rect.top)*dpr};
+  }
+  function zoomBoundsAt(px,py,zoom){
+    const b = state.bounds;
+    const w = screenToWorld(px,py);
+    let newMinX = w.x - (w.x - b.minX)*zoom;
+    let newMaxX = w.x + (b.maxX - w.x)*zoom;
+    let newMinY = w.y - (w.y - b.minY)*zoom;
+    let newMaxY = w.y + (b.maxY - w.y)*zoom;
+    const minRange = 1e-6;
+    if ((newMaxX-newMinX)<minRange){
+      const cx=(newMinX+newMaxX)/2; newMinX=cx-minRange/2; newMaxX=cx+minRange/2;
+    }
+    if ((newMaxY-newMinY)<minRange){
+      const cy=(newMinY+newMaxY)/2; newMinY=cy-minRange/2; newMaxY=cy+minRange/2;
+    }
+    state.bounds = {minX:newMinX,maxX:newMaxX,minY:newMinY,maxY:newMaxY};
+  }
+
+  // ---------------------------- Drawing primitives ----------------------------
+  function drawArrow(from,to,strokeStyle,width=2.25,head=10){
+    ctx.save();
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(from.x,from.y);
+    ctx.lineTo(to.x,to.y);
+    ctx.stroke();
+    const dx=to.x-from.x, dy=to.y-from.y;
+    const ang=Math.atan2(dy,dx);
+    ctx.beginPath();
+    ctx.moveTo(to.x,to.y);
+    ctx.lineTo(to.x - head*Math.cos(ang - Math.PI/7), to.y - head*Math.sin(ang - Math.PI/7));
+    ctx.lineTo(to.x - head*Math.cos(ang + Math.PI/7), to.y - head*Math.sin(ang + Math.PI/7));
+    ctx.closePath();
+    ctx.fillStyle = strokeStyle;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function roundRect(x,y,w,h,r){
+    const rr = Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    ctx.closePath();
+  }
+
+  function clipLineToBox(p1,p2,box){
+    let t0=0,t1=1;
+    const dx=p2.x-p1.x, dy=p2.y-p1.y;
+    function clip(p,q){
+      if (p===0) return q>=0;
+      const r=q/p;
+      if (p<0){ if (r>t1) return false; if (r>t0) t0=r; }
+      else { if (r<t0) return false; if (r<t1) t1=r; }
+      return true;
+    }
+    if (
+      clip(-dx, p1.x - box.left) &&
+      clip( dx, box.right - p1.x) &&
+      clip(-dy, p1.y - box.top) &&
+      clip( dy, box.bottom - p1.y)
+    ){
+      return [
+        {x:p1.x+t0*dx, y:p1.y+t0*dy},
+        {x:p1.x+t1*dx, y:p1.y+t1*dy}
+      ];
+    }
+    return null;
+  }
+
+  function flashAlpha(){
+    return 0.25 + 0.75 * ((Math.sin(state.t * 9) + 1) / 2);
+  }
+
+  // ---------------------------- Model scoring/prediction ----------------------------
+  function dot2(a,b){ return a.x*b.x + a.y*b.y; }
+
+  function topKNext(prevWord, k=5){
+    if (!state.vocabSet.has(prevWord)) return [];
+    const iPrev = state.wordToIdx.get(prevWord);
+    const vPrev = state.vecs[iPrev];
+    const scored = state.vocab.map((w,i)=>({w, s: dot2(vPrev, state.vecs[i])}));
+    scored.sort((a,b)=>b.s-a.s);
+    return scored.slice(0,k);
+  }
+
+  // ---------------------------- Training step ----------------------------
+  function sampleNegative(excludeWord){
+    const V = state.vocab.length;
+    if (V<=1) return state.vocab[0];
+    for (let t=0;t<20;t++){
+      const w = state.vocab[Math.floor(Math.random()*V)];
+      if (w !== excludeWord) return w;
+    }
+    return state.vocab[(state.wordToIdx.get(excludeWord)+1)%V];
+  }
+
+  function phaseA_test(){
+    if (!state.bigrams.length) return;
+
+    const ex = state.bigrams[state.idx];
+    const prev = ex.prev, next = ex.next;
+    const neg = sampleNegative(next);
+
+    const iPrev = state.wordToIdx.get(prev);
+    const iNext = state.wordToIdx.get(next);
+    const iNeg  = state.wordToIdx.get(neg);
+
+    const vPrev = state.vecs[iPrev];
+    const vNext = state.vecs[iNext];
+    const vNeg  = state.vecs[iNeg];
+
+    const sPos = dot2(vPrev, vNext);
+    const pPos = sigmoid(sPos);
+    const sNeg = dot2(vPrev, vNeg);
+    const pNeg = sigmoid(sNeg);
+
+    const top = topKNext(prev, 5);
+    const pred = top.length ? top[0].w : '—';
+
+    const updateOnlyOnMistake = el.updateOnMistake.checked;
+    const isWrong = (pred !== next);
+    const willUpdate = (!updateOnlyOnMistake) || isWrong;
+
+    state.pending = {
+      prev,next,neg,
+      iPrev,iNext,iNeg,
+      sPos,pPos,sNeg,pNeg,
+      pred, top, willUpdate, updateOnlyOnMistake, isWrong
+    };
+
+    state.lastView = {stage:'A', ...state.pending};
+    state.phase = 'B';
+  }
+
+  function phaseB_update(){
+    if (!state.pending){ phaseA_test(); return; }
+    const t = state.pending;
+
+    const vPrevOld = deepClone(state.vecs[t.iPrev]);
+    const vNextOld = deepClone(state.vecs[t.iNext]);
+    const vNegOld  = deepClone(state.vecs[t.iNeg]);
+
+    let didUpdate = false;
+    let reason = '';
+    let dPrev={x:0,y:0}, dNext={x:0,y:0}, dNeg={x:0,y:0};
+
+    if (t.willUpdate){
+      const lr = state.lr;
+
+      const gPos = (1 - t.pPos);
+      const gNeg = (0 - t.pNeg);
+
+      const vPrev = state.vecs[t.iPrev];
+      const vNext = state.vecs[t.iNext];
+      const vNeg  = state.vecs[t.iNeg];
+
+      dPrev.x += lr * gPos * vNext.x; dPrev.y += lr * gPos * vNext.y;
+      dNext.x += lr * gPos * vPrev.x; dNext.y += lr * gPos * vPrev.y;
+
+      dPrev.x += lr * gNeg * vNeg.x;  dPrev.y += lr * gNeg * vNeg.y;
+      dNeg.x  += lr * gNeg * vPrev.x; dNeg.y  += lr * gNeg * vPrev.y;
+
+      state.vecs[t.iPrev].x += dPrev.x; state.vecs[t.iPrev].y += dPrev.y;
+      state.vecs[t.iNext].x += dNext.x; state.vecs[t.iNext].y += dNext.y;
+      state.vecs[t.iNeg].x  += dNeg.x;  state.vecs[t.iNeg].y  += dNeg.y;
+
+      const wd = 0.0008;
+      for (const idx of [t.iPrev, t.iNext, t.iNeg]){
+        state.vecs[idx].x *= (1 - wd);
+        state.vecs[idx].y *= (1 - wd);
+      }
+
+      didUpdate = true;
+      reason = t.updateOnlyOnMistake
+        ? (t.isWrong ? 'Prediction was wrong ⇒ update applied to increase dot(prev,true) and decrease dot(prev,neg).' :
+                      'Prediction was correct ⇒ update skipped by setting.')
+        : 'Update applied every step to reinforce true next and suppress a random negative.';
+    } else {
+      didUpdate = false;
+      reason = 'Update skipped (update-only-on-mistake enabled and prediction matched the true next word).';
+    }
+
+    state.lastView = {
+      stage:'B',
+      prev:t.prev, next:t.next, neg:t.neg,
+      pred:t.pred, top:t.top,
+      sPos:t.sPos, pPos:t.pPos, sNeg:t.sNeg, pNeg:t.pNeg,
+      vPrevOld, vNextOld, vNegOld,
+      vPrevNew: deepClone(state.vecs[t.iPrev]),
+      vNextNew: deepClone(state.vecs[t.iNext]),
+      vNegNew:  deepClone(state.vecs[t.iNeg]),
+      dPrev, dNext, dNeg,
+      didUpdate, reason
+    };
+
+    state.idx = (state.idx + 1) % state.bigrams.length;
+    state.pending = null;
+    state.phase = 'A';
+  }
+
+  function doOnePhase(){
+    if (!state.bigrams.length) return;
+    if (state.phase === 'A') phaseA_test();
+    else phaseB_update();
+
+    pushHistory();
+    refreshSidebar();
+  }
+
+  // ---------------------------- History / retrace ----------------------------
+  function pushHistory(){
+    const snap = {
+      idx: state.idx,
+      phase: state.phase,
+      vecs: deepClone(state.vecs),
+      pending: deepClone(state.pending),
+      lastView: deepClone(state.lastView),
+      bounds: deepClone(state.bounds),
+      baseBounds: deepClone(state.baseBounds),
+      userLast: state.userLast
+    };
+    state.history.push(snap);
+    if (state.history.length > state.historyMax) state.history.shift();
+    el.retraceBtn.disabled = !(state.history.length > 1);
+  }
+
+  function restoreSnap(s){
+    state.idx = s.idx;
+    state.phase = s.phase;
+    state.vecs = deepClone(s.vecs);
+    state.pending = deepClone(s.pending);
+    state.lastView = deepClone(s.lastView);
+    state.bounds = deepClone(s.bounds);
+    state.baseBounds = deepClone(s.baseBounds);
+    state.userLast = s.userLast || null;
+
+    state.pan.active = false;
+    state.pan.startBounds = null;
+    el.canvas.classList.remove('panning');
+
+    refreshSidebar();
+  }
+
+  function retrace(){
+    if (state.running) stopRun();
+    if (state.history.length <= 1) return;
+    state.history.pop();
+    restoreSnap(state.history[state.history.length - 1]);
+    setStatus('Retrace');
+  }
+
+  // ---------------------------- Running controls ----------------------------
+  function enableControls(on){
+    el.runBtn.disabled = !on;
+    el.stepBtn.disabled = !on;
+    el.resetBtn.disabled = !on;
+    el.refitBtn.disabled = !on;
+    el.resetViewBtn.disabled = !on;
+    el.pauseBtn.disabled = !(on && state.running);
+    el.retraceBtn.disabled = !(state.history.length > 1);
+  }
+  function stopRun(){
+    state.running = false;
+    if (state.timer) clearInterval(state.timer);
+    state.timer = null;
+    setStatus('Idle');
+    el.pauseBtn.disabled = true;
+    el.runBtn.disabled = !state.bigrams.length;
+  }
+  function startRun(){
+    if (!state.bigrams.length) return;
+    state.running = true;
+    setStatus('Running');
+    el.pauseBtn.disabled = false;
+    el.runBtn.disabled = true;
+    const period = Math.max(5, Math.floor(1000 / state.phasesPerSec));
+    state.timer = setInterval(() => doOnePhase(), period);
+  }
+
+  // ---------------------------- UI: narration & stats ----------------------------
+  function setNarration(html){ el.narrationBox.innerHTML = html; }
+
+  function refreshUserPrediction(){
+    const line = el.userLine.value || '';
+    const toks = tokenize(line);
+    const last = toks.length ? toks[toks.length-1] : null;
+    state.userLast = last;
+
+    if (!last){
+      el.predBox.textContent = 'Prediction: —';
+      return;
+    }
+    if (!state.vocabSet.has(last)){
+      el.predBox.textContent =
+        `Prediction: (word not in vocab)\n` +
+        `Last word: "${last}"\n` +
+        `Tip: Increase Vocab slider or train on text containing this word.`;
+      return;
+    }
+    const top = topKNext(last, 8);
+    if (!top.length){
+      el.predBox.textContent = `Prediction: —`;
+      return;
+    }
+    const lines = top.map((o,i)=> `${String(i+1).padStart(2,' ')}. ${o.w.padEnd(14,' ')}  score=${fmt(o.s)}`);
+    el.predBox.textContent =
+      `Last word: "${last}"\n` +
+      `Top next-word guesses:\n` +
+      lines.join('\n');
+  }
+
+  function refreshSidebar(){
+    if (!state.tokens.length){
+      el.kvCorpus.textContent = '—';
+      el.kvIdx.textContent = '—';
+      el.kvPair.textContent = '—';
+      el.kvScore.textContent = '—';
+      el.kvProb.textContent = '—';
+      el.kvTop.textContent = '—';
+      el.nextPill.textContent = 'Next: —';
+      setNarration(
+        'Load a .txt file, then Step thru or RUN.\n\n' +
+        'MyLM will create 2D vectors for the top-N words and learn from bigrams (prev → next).\n\n' +
+        'Chat panel:\n' +
+        '• Offline: quotes relevant sentences.\n' +
+        '• OpenAI API (cloud): calls /api/chat on this server.'
+      );
+      return;
+    }
+
+    el.kvCorpus.textContent = `${state.tokens.length} tokens / ${state.bigrams.length} bigrams / V=${state.vocab.length}`;
+    el.kvIdx.textContent = `${state.idx} / ${Math.max(0,state.bigrams.length-1)}  | Phase ${state.phase}`;
+    el.nextPill.textContent = state.bigrams.length
+      ? `Next: Phase ${state.phase}  idx ${state.idx}  (${state.bigrams[state.idx].prev} → ${state.bigrams[state.idx].next})`
+      : 'Next: —';
+
+    const v = state.lastView;
+    if (!v){
+      const ex = state.bigrams[state.idx];
+      el.kvPair.textContent = ex ? `${ex.prev} → ${ex.next}` : '—';
+      el.kvScore.textContent = '—';
+      el.kvProb.textContent = '—';
+      el.kvTop.textContent = '—';
+
+      setNarration(
+        'Current state:\n' +
+        `• Vocab size: <span class="mono">${state.vocab.length}</span> words\n` +
+        `• Learning rate η: <span class="mono">${state.lr.toFixed(2)}</span>\n\n` +
+        'Next step is <span class="mono">PHASE A (Test)</span>:\n' +
+        '• Pick one training bigram <span class="mono">prev → trueNext</span>\n' +
+        '• Compute <span class="mono">score = v(prev)·v(trueNext)</span> and <span class="mono">p = σ(score)</span>\n' +
+        '• Also sample one negative word and compute its score/probability.'
+      );
+      return;
+    }
+
+    if (v.stage === 'A'){
+      el.kvPair.textContent = `${v.prev} → ${v.next} (neg: ${v.neg})`;
+      el.kvScore.textContent = `pos=${fmt(v.sPos)}  neg=${fmt(v.sNeg)}`;
+      el.kvProb.textContent  = `p(pos)=${fmt(v.pPos)}  p(neg)=${fmt(v.pNeg)}`;
+      el.kvTop.textContent   = `${v.pred}  (true: ${v.next})`;
+
+      const why = v.updateOnlyOnMistake
+        ? (v.isWrong ? 'Because the top predicted word does NOT equal the true next word, we will update.' :
+                      'Because the top predicted word equals the true next word, we will skip the update.')
+        : 'Because “update only on mistake” is OFF, we will update every step.';
+
+      setNarration(
+        `<b>Current step:</b> <span class="mono">PHASE A (Test)</span>\n` +
+        `• Training pair: <span class="mono">${v.prev} → ${v.next}</span>\n` +
+        `• Negative sample: <span class="mono">${v.neg}</span>\n\n` +
+        `Computed:\n` +
+        `• <span class="mono">score_pos = v(prev)·v(true) = ${fmt(v.sPos)}</span> ⇒ <span class="mono">p_pos = σ(score) = ${fmt(v.pPos)}</span>\n` +
+        `• <span class="mono">score_neg = v(prev)·v(neg)  = ${fmt(v.sNeg)}</span> ⇒ <span class="mono">p_neg = σ(score) = ${fmt(v.pNeg)}</span>\n\n` +
+        `<b>What will happen next:</b> <span class="mono">PHASE B (Update)</span>\n` +
+        `• Adjust vectors so dot(prev,true) increases and dot(prev,neg) decreases.\n\n` +
+        `<span class="muted">Reason:</span> ${why}`
+      );
+      return;
+    }
+
+    if (v.stage === 'B'){
+      el.kvPair.textContent = `${v.prev} → ${v.next} (neg: ${v.neg})`;
+      el.kvScore.textContent = `pos=${fmt(v.sPos)}  neg=${fmt(v.sNeg)}`;
+      el.kvProb.textContent  = `p(pos)=${fmt(v.pPos)}  p(neg)=${fmt(v.pNeg)}`;
+      el.kvTop.textContent   = `${v.pred}  (true: ${v.next})`;
+
+      el.formulaBox.textContent =
+`Training rule (2D negative sampling, 1 negative):
+
+score = v(prev) · v(cand)
+p = σ(score)
+
+For true pair (y=1):  g = (1 - p)
+For negative (y=0):   g = (0 - p)
+
+Updates:
+Δv(prev) += η * g_pos * v(true)   +   η * g_neg * v(neg)
+Δv(true) += η * g_pos * v(prev)
+Δv(neg)  += η * g_neg * v(prev)
+
+(Then a tiny weight decay keeps vectors bounded.)`;
+
+      setNarration(
+        `<b>Current step:</b> <span class="mono">PHASE B (Update)</span>\n` +
+        `• Applied gradient update (or skipped).\n` +
+        `• Δv(prev)=(${fmt(v.dPrev.x)}, ${fmt(v.dPrev.y)}),  Δv(true)=(${fmt(v.dNext.x)}, ${fmt(v.dNext.y)}),  Δv(neg)=(${fmt(v.dNeg.x)}, ${fmt(v.dNeg.y)})\n\n` +
+        `<span class="muted">Reason:</span> ${v.reason}\n\n` +
+        `<b>What will happen next:</b>\n` +
+        `• Move to the next bigram and return to <span class="mono">PHASE A</span>.`
+      );
+      return;
+    }
+  }
+
+  // ---------------------------- Drawing: graph ----------------------------
+  function drawAxesAndGrid(){
+    resizeCanvasToDisplaySize(el.canvas);
+    const W = el.canvas.width, H = el.canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const box = getPlotBox();
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.10)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(0,0,0,.12)';
+    ctx.fillRect(box.left, box.top, box.right-box.left, box.bottom-box.top);
+
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
+    ctx.lineWidth = 1;
+    const ticks = 6;
+    for (let i=0;i<=ticks;i++){
+      const t = i/ticks;
+      const x = box.left + t*(box.right-box.left);
+      const y = box.top + t*(box.bottom-box.top);
+      ctx.beginPath(); ctx.moveTo(x, box.top); ctx.lineTo(x, box.bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(box.left, y); ctx.lineTo(box.right, y); ctx.stroke();
+    }
+
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--axis').trim();
+    ctx.lineWidth = 1.4;
+    if (state.bounds.minX <= 0 && state.bounds.maxX >= 0){
+      const x0 = worldToScreen(0,0).x;
+      ctx.beginPath(); ctx.moveTo(x0, box.top); ctx.lineTo(x0, box.bottom); ctx.stroke();
+    }
+    if (state.bounds.minY <= 0 && state.bounds.maxY >= 0){
+      const y0 = worldToScreen(0,0).y;
+      ctx.beginPath(); ctx.moveTo(box.left, y0); ctx.lineTo(box.right, y0); ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(231,236,255,.75)';
+    ctx.font = '12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+    const b = state.bounds;
+    ctx.fillText('X1: [' + fmt(b.minX) + ', ' + fmt(b.maxX) + ']', box.left, H-20);
+    ctx.fillText('X2: [' + fmt(b.minY) + ', ' + fmt(b.maxY) + ']', 16, box.top+14);
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.10)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(box.left, box.top, box.right-box.left, box.bottom-box.top);
+    ctx.restore();
+  }
+
+  function drawPoints(){
+    if (!state.vecs.length) return;
+
+    const radius = 4.8;
+    const showLabels = el.showLabels.checked;
+
+    const v = state.lastView;
+    const prevW = v ? v.prev : null;
+    const nextW = v ? v.next : null;
+    const negW  = v ? v.neg  : null;
+    const userW = state.userLast && state.vocabSet.has(state.userLast) ? state.userLast : null;
+
+    for (let i=0;i<state.vocab.length;i++){
+      const w = state.vocab[i];
+      const p = state.vecs[i];
+      const s = worldToScreen(p.x,p.y);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, radius, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(231,236,255,.72)';
+      ctx.fill();
+      ctx.restore();
+
+      if (showLabels){
+        ctx.save();
+        ctx.font = '12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+        ctx.fillStyle = 'rgba(231,236,255,.70)';
+        ctx.fillText(w, s.x + 7, s.y - 7);
+        ctx.restore();
+      }
+
+      if (w === prevW){
+        ctx.save();
+        ctx.beginPath(); ctx.arc(s.x, s.y, radius+7, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,210,74,.90)'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.restore();
+      }
+      if (w === nextW){
+        ctx.save();
+        ctx.beginPath(); ctx.arc(s.x, s.y, radius+7, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(102,227,161,.85)'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.restore();
+      }
+      if (w === negW){
+        ctx.save();
+        ctx.beginPath(); ctx.arc(s.x, s.y, radius+7, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,90,109,.85)'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.restore();
+      }
+      if (w === userW){
+        ctx.save();
+        ctx.beginPath(); ctx.arc(s.x, s.y, radius+10, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(106,167,255,.70)'; ctx.lineWidth = 2.6; ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawVectorLine(word, color, width=2.2, label=true){
+    if (!word || !state.vocabSet.has(word)) return;
+    const i = state.wordToIdx.get(word);
+    const p = state.vecs[i];
+    const o = worldToScreen(0,0);
+    const t = worldToScreen(p.x,p.y);
+    drawArrow(o,t,color,width,11);
+    if (label){
+      ctx.save();
+      ctx.font = '12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+      ctx.fillStyle = color;
+      ctx.fillText(`${word} = (${fmt(p.x)}, ${fmt(p.y)})`, t.x + 10, t.y + 5);
+      ctx.restore();
+    }
+  }
+
+  function drawHyperplaneForPrev(prev){
+    if (!prev || !state.vocabSet.has(prev)) return;
+    const iPrev = state.wordToIdx.get(prev);
+    const vPrev = state.vecs[iPrev];
+    const len = Math.hypot(vPrev.x, vPrev.y);
+    if (len < 1e-9) return;
+
+    const dx = -vPrev.y;
+    const dy =  vPrev.x;
+
+    const b = state.bounds;
+    const span = 3 * Math.max(b.maxX-b.minX, b.maxY-b.minY);
+    const A = worldToScreen(-dx*span, -dy*span);
+    const B = worldToScreen( dx*span,  dy*span);
+
+    const box = getPlotBox();
+    const clipped = clipLineToBox(A,B,box);
+    if (!clipped) return;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(143,162,255,.72)';
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([10,8]);
+    ctx.beginPath();
+    ctx.moveTo(clipped[0].x, clipped[0].y);
+    ctx.lineTo(clipped[1].x, clipped[1].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const mid = {x:(clipped[0].x+clipped[1].x)/2, y:(clipped[0].y+clipped[1].y)/2};
+    ctx.fillStyle = 'rgba(231,236,255,.78)';
+    ctx.font = '12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+    ctx.fillText('v(prev)·x = 0', mid.x + 8, mid.y - 8);
+    ctx.restore();
+  }
+
+  function drawProjection(prev, cand){
+    if (!prev || !cand) return;
+    if (!state.vocabSet.has(prev) || !state.vocabSet.has(cand)) return;
+
+    const iPrev = state.wordToIdx.get(prev);
+    const iCand = state.wordToIdx.get(cand);
+    const vPrev = state.vecs[iPrev];
+    const vCand = state.vecs[iCand];
+
+    const len2 = vPrev.x*vPrev.x + vPrev.y*vPrev.y;
+    if (len2 < 1e-12) return;
+
+    const dot = dot2(vPrev, vCand);
+    const alpha = dot / len2;
+    const proj = {x: alpha*vPrev.x, y: alpha*vPrev.y};
+
+    const box = getPlotBox();
+    const O = worldToScreen(0,0);
+    const P = worldToScreen(proj.x, proj.y);
+    const C = worldToScreen(vCand.x, vCand.y);
+
+    const clippedOP = clipLineToBox(O,P,box);
+    if (clippedOP){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,210,74,.88)';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(clippedOP[0].x, clippedOP[0].y);
+      ctx.lineTo(clippedOP[1].x, clippedOP[1].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const clippedCP = clipLineToBox(C,P,box);
+    if (clippedCP){
+      ctx.save();
+      ctx.setLineDash([6,6]);
+      ctx.strokeStyle = 'rgba(255,210,74,.35)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(clippedCP[0].x, clippedCP[0].y);
+      ctx.lineTo(clippedCP[1].x, clippedCP[1].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  function drawUpdateFlashes(){
+    const v = state.lastView;
+    if (!v || v.stage !== 'B') return;
+    if (!el.flashUpdate.checked) return;
+    if (!v.didUpdate) return;
+
+    const a = flashAlpha();
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = 'rgba(106,167,255,.60)';
+
+    function flashDelta(word, vOld, d, tag){
+      const from = worldToScreen(vOld.x, vOld.y);
+      const to   = worldToScreen(vOld.x + d.x, vOld.y + d.y);
+      drawArrow(from, to, 'rgba(106,167,255,1)', 4.4, 14);
+      ctx.save();
+      ctx.font = '12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+      ctx.fillStyle = 'rgba(106,167,255,1)';
+      ctx.fillText(`Δ${tag}(${word}) = (${fmt(d.x)}, ${fmt(d.y)})`, to.x + 8, to.y + 6);
+      ctx.restore();
+    }
+
+    flashDelta(v.prev, v.vPrevOld, v.dPrev, 'v');
+    flashDelta(v.next, v.vNextOld, v.dNext, 'v');
+    flashDelta(v.neg,  v.vNegOld,  v.dNeg,  'v');
+
+    ctx.restore();
+  }
+
+  function drawStatusMessage(){
+    const box = getPlotBox();
+    const msg = (() => {
+      const v = state.lastView;
+      if (!state.bigrams.length) return 'Drew: graph';
+      if (!v) return 'Drew: vocabulary vectors';
+      if (v.stage === 'A') return 'Drew: tested scores for (prev→true) and (prev→neg)';
+      if (v.stage === 'B') return v.didUpdate ? 'Drew: applied Δv updates (flashing)' : 'Drew: no update (correct prediction)';
+      return 'Drew: graph';
+    })();
+
+    const x = (box.left + box.right)/2;
+    const y = box.bottom + 28;
+
+    ctx.save();
+    ctx.font = 'bold 13px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono').trim();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const padX=12,padY=7;
+    const m=ctx.measureText(msg);
+    const w=m.width+padX*2;
+    const h=18+padY*2;
+    const left=x-w/2, top=y-h/2;
+
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    roundRect(left, top, w, h, 10);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(255,210,74,1)';
+    ctx.shadowColor = 'rgba(255,210,74,.22)';
+    ctx.shadowBlur = 6;
+    ctx.fillText(msg, x, y);
+    ctx.restore();
+  }
+
+  function draw(){
+    if (!state.bounds){
+      resizeCanvasToDisplaySize(el.canvas);
+      ctx.clearRect(0,0,el.canvas.width,el.canvas.height);
+      return;
+    }
+
+    drawAxesAndGrid();
+    drawPoints();
+
+    const v = state.lastView;
+    if (v){
+      drawVectorLine(v.prev, 'rgba(255,210,74,.92)', 2.8, true);
+      drawVectorLine(v.next, 'rgba(102,227,161,.78)', 2.3, true);
+      drawVectorLine(v.neg,  'rgba(255,90,109,.68)', 2.1, true);
+
+      drawHyperplaneForPrev(v.prev);
+
+      drawProjection(v.prev, v.next);
+      drawProjection(v.prev, v.neg);
+    }
+
+    if (state.userLast && state.vocabSet.has(state.userLast)){
+      drawVectorLine(state.userLast, 'rgba(106,167,255,.60)', 2.0, false);
+    }
+
+    drawUpdateFlashes();
+    drawStatusMessage();
+  }
+
+  // ---------------------------- Canvas interactions ----------------------------
+  function onCanvasWheel(evt){
+    if (!evt.ctrlKey) return;
+    evt.preventDefault();
+    evt.stopPropagation();
+    if (!state.bounds) return;
+
+    const p = canvasPos(evt);
+    const factor = Math.exp(evt.deltaY * 0.0012);
+    const z = clamp(factor, 0.85, 1.18);
+    zoomBoundsAt(p.x, p.y, z);
+
+    pushHistory();
+    refreshSidebar();
+  }
+
+  function beginPan(px,py){
+    if (!state.bounds) return;
+    state.pan.active = true;
+    state.pan.startPx = {x:px,y:py};
+    state.pan.startBounds = {...state.bounds};
+    el.canvas.classList.add('panning');
+  }
+  function updatePan(px,py){
+    if (!state.pan.active || !state.pan.startBounds) return;
+
+    const box = getPlotBox();
+    const plotW = (box.right-box.left);
+    const plotH = (box.bottom-box.top);
+
+    const dxPx = px - state.pan.startPx.x;
+    const dyPx = py - state.pan.startPx.y;
+
+    const sb = state.pan.startBounds;
+    const rangeX = sb.maxX - sb.minX;
+    const rangeY = sb.maxY - sb.minY;
+
+    const dxWorld = (dxPx/plotW)*rangeX;
+    const dyWorld = (dyPx/plotH)*rangeY;
+
+    state.bounds = {
+      minX: sb.minX - dxWorld,
+      maxX: sb.maxX - dxWorld,
+      minY: sb.minY + dyWorld,
+      maxY: sb.maxY + dyWorld
+    };
+  }
+  function endPan(){
+    state.pan.active = false;
+    state.pan.startBounds = null;
+    el.canvas.classList.remove('panning');
+  }
+
+  el.canvas.addEventListener('mousedown', (evt)=>{
+    if (!state.bounds) return;
+    evt.preventDefault();
+    const p = canvasPos(evt);
+    beginPan(p.x,p.y);
+  });
+  window.addEventListener('mousemove', (evt)=>{
+    if (!state.bounds) return;
+    if (!state.pan.active) return;
+    const p = canvasPos(evt);
+    updatePan(p.x,p.y);
+    refreshSidebar();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if (state.pan.active) endPan();
+  });
+  el.canvas.addEventListener('wheel', onCanvasWheel, {passive:false});
+
+  // ---------------------------- Loading / Reset ----------------------------
+  function rebuildCorpusIndex(text){
+    state.sentences = splitIntoSentences(text);
+    const {sentTF, df, idf} = buildTfidfIndex(state.sentences);
+    state.sentenceVecs = sentTF;
+    state.df = df;
+    state.idf = idf;
+  }
+
+  function resetModelFromText(text){
+    stopRun();
+    state.textRaw = text;
+    state.tokens = tokenize(text);
+
+    state.vocabSize = Number(el.vocabRange.value);
+    const {counts, vocab, vocabSet, wordToIdx} = buildVocab(state.tokens, state.vocabSize);
+    state.counts = counts;
+    state.vocab = vocab;
+    state.vocabSet = vocabSet;
+    state.wordToIdx = wordToIdx;
+
+    state.bigrams = buildBigrams(state.tokens, state.vocabSet);
+
+    state.vecs = initVecs(state.vocab, 1337);
+
+    state.baseBounds = computeBoundsFromVecs(state.vecs);
+    setBounds(state.baseBounds);
+
+    state.idx = 0;
+    state.phase = 'A';
+    state.pending = null;
+    state.lastView = null;
+
+    state.history = [];
+    pushHistory();
+
+    rebuildCorpusIndex(text);
+
+    enableControls(state.bigrams.length > 0);
+
+    setLoadStatus(`Loaded. tokens=${state.tokens.length}, bigrams=${state.bigrams.length}, vocab=${state.vocab.length}. sentences=${state.sentences.length}`);
+    setStatus('Ready');
+
+    refreshSidebar();
+    refreshUserPrediction();
+  }
+
+  async function handleFile(file){
+    setLoadStatus(`Reading ${file.name} ...`);
+    setStatus('Loading');
+    const text = await file.text();
+    if (!text.trim()){
+      setLoadStatus('File is empty.');
+      setStatus('Idle');
+      return;
+    }
+    resetModelFromText(text);
+  }
+
+  function loadSample(){
+    const sample =
+`The quick brown fox jumps over the lazy dog.
+The quick brown fox jumps high.
+The lazy dog sleeps.
+The dog jumps over the fox.
+The fox is quick and the dog is lazy.
+The quick dog runs fast.
+The brown fox runs fast.
+The dog runs and the fox runs.
+The dog sleeps and the fox jumps.`;
+
+    resetModelFromText(sample);
+  }
+
+  function clearAll(){
+    stopRun();
+    state.textRaw='';
+    state.tokens=[];
+    state.counts=new Map();
+    state.vocab=[];
+    state.vocabSet=new Set();
+    state.wordToIdx=new Map();
+    state.bigrams=[];
+    state.vecs=[];
+    state.baseBounds=null;
+    state.bounds=null;
+    state.idx=0;
+    state.phase='A';
+    state.pending=null;
+    state.lastView=null;
+    state.userLast=null;
+    state.history=[];
+    state.sentences=[];
+    state.sentenceVecs=[];
+    state.df=new Map();
+    state.idf=new Map();
+    enableControls(false);
+    setLoadStatus('—');
+    setStatus('Idle');
+    el.userLine.value='';
+    el.predBox.textContent='Prediction: —';
+    refreshSidebar();
+  }
+
+  function resetVectors(){
+    if (!state.vocab.length) return;
+    stopRun();
+    state.vecs = initVecs(state.vocab, 1337);
+    state.baseBounds = computeBoundsFromVecs(state.vecs);
+    setBounds(state.baseBounds);
+    state.idx=0;
+    state.phase='A';
+    state.pending=null;
+    state.lastView=null;
+    state.history=[];
+    pushHistory();
+    setStatus('Ready');
+    refreshSidebar();
+    refreshUserPrediction();
+  }
+
+  function refitView(){
+    if (!state.vecs.length) return;
+    const b = computeBoundsFromVecs(state.vecs);
+    setBounds(b);
+    pushHistory();
+    refreshSidebar();
+  }
+
+  function resetView(){
+    if (!state.baseBounds) return;
+    setBounds(state.baseBounds);
+    pushHistory();
+    refreshSidebar();
+  }
+
+  // ---------------------------- Chat: rendering ----------------------------
+  function chatAdd(role, content){
+    state.chat.messages.push({role, content});
+    renderChat();
+  }
+
+  function renderChat(){
+    const body = el.chatBody;
+    body.innerHTML = '';
+    for (const m of state.chat.messages){
+      const row = document.createElement('div');
+      row.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.textContent = (m.role === 'user') ? 'You' : 'MyLM';
+
+      const bub = document.createElement('div');
+      bub.className = 'bubble';
+      bub.textContent = m.content;
+
+      row.appendChild(tag);
+      row.appendChild(bub);
+      body.appendChild(row);
+    }
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function chatClear(){
+    state.chat.messages = [];
+    renderChat();
+  }
+
+  function chatSetBusy(busy){
+    el.chatSendBtn.disabled = busy;
+    el.chatStopBtn.disabled = !busy;
+    if (!busy) state.chat.aborter = null;
+  }
+
+  function buildCorpusContextBlock(query){
+    if (!el.chatUseCorpus.checked) return '';
+    const hits = retrieveTopSentences(query, 6);
+    if (!hits.length) return '';
+    const lines = hits.map((h,i)=>`${i+1}) ${h.sentence}`).join('\n');
+    return `Relevant excerpts from the loaded text:\n${lines}`;
+  }
+
+  async function chatSend(){
+    const q = (el.chatInput.value || '').trim();
+    if (!q) return;
+
+    el.chatInput.value = '';
+    chatAdd('user', q);
+
+    const provider = el.chatProvider.value;
+
+    if (provider === 'offline'){
+      chatAdd('assistant', offlineAnswer(q));
+      return;
+    }
+
+    if (provider === 'openai'){
+      const model = (el.chatModel.value || 'gpt-4.1-mini').trim();
+      const context = buildCorpusContextBlock(q);
+
+      const system =
+`You are an assistant inside an educational app called "MyLM".
+Be clear, step-by-step, and practical.
+If "Relevant excerpts" are provided, use them.`;
+
+      const recent = state.chat.messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-12)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const messages = [
+        { role: 'system', content: system + (context ? `\n\n${context}` : '') },
+        ...recent
+      ];
+
+      chatSetBusy(true);
+      chatAdd('assistant', 'Thinking… (OpenAI cloud via Render)');
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model, messages })
+        });
+
+        if (!res.ok) {
+          const txt = await res.text().catch(()=> '');
+          throw new Error(`HTTP ${res.status}. ${txt || ''}`.trim());
+        }
+
+        const data = await res.json();
+        const content = data?.text ?? '';
+
+        state.chat.messages.pop(); // remove placeholder
+        chatAdd('assistant', content || '(No content returned.)');
+
+      } catch (err) {
+        state.chat.messages.pop();
+        chatAdd('assistant',
+          `OpenAI call failed via Render backend.\n\n` +
+          `Error: ${String(err.message || err)}\n\n` +
+          `Checklist:\n` +
+          `1) Confirm this page is running on Render (not file://).\n` +
+          `2) Confirm OPENAI_API_KEY is set in Render Environment Variables.\n` +
+          `3) Check Render logs for /api/chat errors.\n`
+        );
+      } finally {
+        chatSetBusy(false);
+      }
+      return;
+    }
+
+    if (provider === 'ollama'){
+      // (Kept for completeness; requires localhost access from browser.)
+      const model = (el.chatModel.value || 'llama3.1:8b').trim();
+      const context = buildCorpusContextBlock(q);
+
+      const sys =
+`You are a local assistant inside an educational app called "MyLM".
+Be clear, step-by-step, and practical.
+If "Relevant excerpts" are provided, use them.`;
+
+      const recent = state.chat.messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-10)
+        .map(m => ({role: m.role, content: m.content}));
+
+      const payloadMessages = [
+        {role:'system', content: sys},
+        ...(context ? [{role:'system', content: context}] : []),
+        ...recent
+      ];
+
+      const aborter = new AbortController();
+      state.chat.aborter = aborter;
+      chatSetBusy(true);
+      chatAdd('assistant', 'Thinking… (Ollama localhost)');
+
+      try{
+        const res = await fetch('http://localhost:11434/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ model, messages: payloadMessages, stream: false }),
+          signal: aborter.signal
+        });
+
+        if (!res.ok){
+          const txt = await res.text().catch(()=> '');
+          throw new Error(`Ollama HTTP ${res.status}. ${txt || ''}`.trim());
+        }
+        const data = await res.json();
+        const content = data?.message?.content ?? '';
+
+        state.chat.messages.pop();
+        chatAdd('assistant', content || '(No content returned.)');
+
+      } catch(err){
+        state.chat.messages.pop();
+        chatAdd('assistant',
+          `Could not reach Ollama at http://localhost:11434.\n\n` +
+          `Error: ${String(err.message || err)}`
+        );
+      } finally{
+        chatSetBusy(false);
+      }
+      return;
+    }
+  }
+
+  function chatStop(){
+    if (state.chat.aborter){
+      state.chat.aborter.abort();
+      state.chat.aborter = null;
+      chatSetBusy(false);
+    }
+  }
+
+  // ---------------------------- Wire UI ----------------------------
+  el.fileInput.addEventListener('change', async (evt)=>{
+    const file = evt.target.files && evt.target.files[0];
+    if (!file) return;
+    await handleFile(file);
+  });
+
+  el.loadSampleBtn.addEventListener('click', ()=>loadSample());
+  el.clearBtn.addEventListener('click', ()=>clearAll());
+  el.resetBtn.addEventListener('click', ()=>resetVectors());
+  el.refitBtn.addEventListener('click', ()=>refitView());
+  el.resetViewBtn.addEventListener('click', ()=>resetView());
+
+  el.runBtn.addEventListener('click', ()=>{ if (!state.running) startRun(); });
+  el.pauseBtn.addEventListener('click', ()=>stopRun());
+  el.stepBtn.addEventListener('click', ()=>{
+    if (state.running) stopRun();
+    setStatus('Stepping');
+    doOnePhase();
+  });
+  el.retraceBtn.addEventListener('click', ()=>retrace());
+
+  el.speedRange.addEventListener('input', ()=>{
+    state.phasesPerSec = Number(el.speedRange.value);
+    el.speedLabel.textContent = `${state.phasesPerSec} phases/s`;
+    if (state.running){ stopRun(); startRun(); }
+  });
+
+  el.vocabRange.addEventListener('input', ()=>{
+    state.vocabSize = Number(el.vocabRange.value);
+    el.vocabLabel.textContent = String(state.vocabSize);
+  });
+
+  el.lrRange.addEventListener('input', ()=>{
+    state.lr = Number(el.lrRange.value)/100;
+    el.lrLabel.textContent = state.lr.toFixed(2);
+  });
+
+  el.vocabRange.addEventListener('change', ()=>{
+    if (!state.textRaw.trim()) return;
+    resetModelFromText(state.textRaw);
+  });
+
+  el.userLine.addEventListener('input', ()=>{
+    refreshUserPrediction();
+    refreshSidebar();
+  });
+
+  // Chat
+  el.chatSendBtn.addEventListener('click', ()=>chatSend());
+  el.chatStopBtn.addEventListener('click', ()=>chatStop());
+  el.chatClearBtn.addEventListener('click', ()=>chatClear());
+  el.chatInput.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      chatSend();
+    }
+  });
+
+  el.chatProvider.addEventListener('change', ()=>{
+    const p = el.chatProvider.value;
+
+    if (p === 'offline'){
+      el.chatHint.textContent = 'Offline mode: retrieves relevant sentences from the loaded .txt (no AI model).';
+      el.chatModel.disabled = true;
+    } else if (p === 'openai'){
+      el.chatHint.textContent = 'OpenAI mode: calls /api/chat on this server (API key stays on Render).';
+      el.chatModel.disabled = false;
+    } else {
+      el.chatHint.innerHTML = 'Ollama mode: calls a local LLM at <span style="font-family:var(--mono)">http://localhost:11434</span>.';
+      el.chatModel.disabled = false;
+    }
+  });
+
+  // initial state
+  el.chatModel.disabled = true;
+
+  // ---------------------------- Init labels ----------------------------
+  el.speedLabel.textContent = `${state.phasesPerSec} phases/s`;
+  el.vocabLabel.textContent = String(state.vocabSize);
+  el.lrLabel.textContent = state.lr.toFixed(2);
+
+  enableControls(false);
+  setLoadStatus('—');
+  refreshSidebar();
+
+  // Seed chat
+  chatAdd('assistant',
+    'Chat ready.\n\n' +
+    '• Offline (Corpus Q&A): quotes relevant sentences from your loaded .txt.\n' +
+    '• OpenAI API (cloud): uses /api/chat on this Render service.'
+  );
+
+  // ---------------------------- RAF loop ----------------------------
+  function tick(ts){
+    state.t = ts/1000;
+    if (state.bounds) draw();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
